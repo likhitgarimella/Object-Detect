@@ -6,102 +6,85 @@
 import UIKit
 import AVFoundation
 
-// MARK: CameraFeedManagerDelegate Declaration
-protocol CameraFeedManagerDelegate: class {
-
-  /**
-   This method delivers the pixel buffer of the current frame seen by the device's camera.
-   */
-  func didOutput(pixelBuffer: CVPixelBuffer)
-
-  /**
-   This method intimates that the camera permissions have been denied.
-   */
-  func presentCameraPermissionsDeniedAlert()
-
-  /**
-   This method intimates that there was an error in video configuration.
-   */
-  func presentVideoConfigurationErrorAlert()
-
-  /**
-   This method intimates that a session runtime error occurred.
-   */
-  func sessionRunTimeErrorOccurred()
-
-  /**
-   This method intimates that the session was interrupted.
-   */
-  func sessionWasInterrupted(canResumeManually resumeManually: Bool)
-
-  /**
-   This method intimates that the session interruption has ended.
-   */
-  func sessionInterruptionEnded()
-
+// MARK: - CameraFeedManagerDelegate Declaration
+protocol CameraFeedManagerDelegate: AnyObject {
+    
+    /** This method delivers the pixel buffer of the current frame seen by the device's camera. */
+    func didOutput(pixelBuffer: CVPixelBuffer)
+    
+    /** This method intimates that the camera permissions have been denied. */
+    func presentCameraPermissionsDeniedAlert()
+    
+    /** This method intimates that there was an error in video configuration. */
+    func presentVideoConfigurationErrorAlert()
+    
+    /** This method intimates that a session runtime error occurred. */
+    func sessionRunTimeErrorOccurred()
+    
+    /** This method intimates that the session was interrupted. */
+    func sessionWasInterrupted(canResumeManually resumeManually: Bool)
+    
+    /** This method intimates that the session interruption has ended. */
+    func sessionInterruptionEnded()
+    
 }
 
-/**
- This enum holds the state of the camera initialization.
- */
+/** This enum holds the state of the camera initialization. */
 enum CameraConfiguration {
-
-  case success
-  case failed
-  case permissionDenied
+    case success
+    case failed
+    case permissionDenied
 }
 
-/**
- This class manages all camera related functionality
- */
+/** This class manages all camera related functionality */
 class CameraFeedManager: NSObject {
-
-  // MARK: Camera Related Instance Variables
-  private let session: AVCaptureSession = AVCaptureSession()
-  private let previewView: PreviewView
-  private let sessionQueue = DispatchQueue(label: "sessionQueue")
-  private var cameraConfiguration: CameraConfiguration = .failed
-  private lazy var videoDataOutput = AVCaptureVideoDataOutput()
-  private var isSessionRunning = false
-
-  // MARK: CameraFeedManagerDelegate
-  weak var delegate: CameraFeedManagerDelegate?
-
-  // MARK: Initializer
-  init(previewView: PreviewView) {
-    self.previewView = previewView
-    super.init()
-
-    // Initializes the session
-    session.sessionPreset = .high
-    self.previewView.session = session
-    self.previewView.previewLayer.connection?.videoOrientation = .portrait
-    self.previewView.previewLayer.videoGravity = .resizeAspectFill
-    self.attemptToConfigureSession()
-  }
-
-  // MARK: Session Start and End methods
-
-  /**
-   This method starts an AVCaptureSession based on whether the camera configuration was successful.
-   */
-  func checkCameraConfigurationAndStartSession() {
-    sessionQueue.async {
-      switch self.cameraConfiguration {
-      case .success:
-        self.addObservers()
-        self.startSession()
-      case .failed:
-        DispatchQueue.main.async {
-          self.delegate?.presentVideoConfigurationErrorAlert()
-        }
-      case .permissionDenied:
-        DispatchQueue.main.async {
-          self.delegate?.presentCameraPermissionsDeniedAlert()
-        }
-      }
+    
+    // MARK: - Camera Related Instance Variables
+    private let session: AVCaptureSession = AVCaptureSession()
+    private let previewView: PreviewView
+    private let sessionQueue = DispatchQueue(label: "sessionQueue")
+    private var cameraConfiguration: CameraConfiguration = .failed
+    private lazy var videoDataOutput = AVCaptureVideoDataOutput()
+    private var isSessionRunning = false
+    
+    // MARK: - CameraFeedManagerDelegate
+    weak var delegate: CameraFeedManagerDelegate?
+    
+    // MARK: - Initializer
+    init(previewView: PreviewView) {
+        
+        self.previewView = previewView
+        super.init()
+        
+        // Initializes the session
+        session.sessionPreset = .high
+        self.previewView.session = session
+        self.previewView.previewLayer.connection?.videoOrientation = .portrait
+        self.previewView.previewLayer.videoGravity = .resizeAspectFill
+        self.attemptToConfigureSession()
+        
     }
-  }
+    
+    // MARK: - Session Start and End methods
+    
+    /** This method starts an AVCaptureSession based on whether the camera configuration was successful. */
+    func checkCameraConfigurationAndStartSession() {
+        sessionQueue.async {
+            switch self.cameraConfiguration {
+                case .success:
+                    self.addObservers()
+                    self.startSession()
+                case .failed:
+                    DispatchQueue.main.async {
+                        self.delegate?.presentVideoConfigurationErrorAlert()
+                    }
+                case .permissionDenied:
+                    DispatchQueue.main.async {
+                        self.delegate?.presentCameraPermissionsDeniedAlert()
+                    }
+            }
+        }
+    }
 
   /**
    This method stops a running an AVCaptureSession.
@@ -139,7 +122,7 @@ class CameraFeedManager: NSObject {
     self.isSessionRunning = self.session.isRunning
   }
 
-  // MARK: Session Configuration Methods.
+  // MARK: - Session Configuration Methods.
   /**
    This method requests for camera permissions and handles the configuration of the session and stores the result of configuration.
    */
@@ -251,7 +234,7 @@ class CameraFeedManager: NSObject {
     return false
   }
 
-  // MARK: Notification Observer Handling
+  // MARK: - Notification Observer Handling
   private func addObservers() {
     NotificationCenter.default.addObserver(self, selector: #selector(CameraFeedManager.sessionRuntimeErrorOccurred(notification:)), name: NSNotification.Name.AVCaptureSessionRuntimeError, object: session)
     NotificationCenter.default.addObserver(self, selector: #selector(CameraFeedManager.sessionWasInterrupted(notification:)), name: NSNotification.Name.AVCaptureSessionWasInterrupted, object: session)
@@ -264,7 +247,7 @@ class CameraFeedManager: NSObject {
     NotificationCenter.default.removeObserver(self, name: NSNotification.Name.AVCaptureSessionInterruptionEnded, object: session)
   }
 
-  // MARK: Notification Observers
+  // MARK: - Notification Observers
   @objc func sessionWasInterrupted(notification: Notification) {
 
     if let userInfoValue = notification.userInfo?[AVCaptureSessionInterruptionReasonKey] as AnyObject?,

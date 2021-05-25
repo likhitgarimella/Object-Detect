@@ -138,15 +138,15 @@
 		AA9AC59D212D39FC000B4E9D /* ObjectDetection */ = {
 			isa = PBXGroup;
 			children = (
+				AA9AC59E212D39FC000B4E9D /* AppDelegate.swift */,
+				AA9AC5D4212D43E0000B4E9D /* Camera Feed */,
 				AA756E672150CD7C004BB0BC /* Extensions */,
 				AA16E59A21807A7000D9E153 /* Cells */,
 				AA756E682150CE88004BB0BC /* Views */,
 				AAB1116F21512383008C215D /* ModelDataHandler */,
 				AA9AC5D1212D43BD000B4E9D /* ViewControllers */,
-				AA9AC5D4212D43E0000B4E9D /* Camera Feed */,
 				AA09263B212D730700D5890F /* Model */,
 				021394B9265ABF2B00471258 /* Storyboards */,
-				AA9AC59E212D39FC000B4E9D /* AppDelegate.swift */,
 				AA9AC5A5212D39FD000B4E9D /* Assets.xcassets */,
 				AA9AC5AA212D39FD000B4E9D /* Info.plist */,
 			);
