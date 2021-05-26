@@ -85,110 +85,95 @@ class CameraFeedManager: NSObject {
             }
         }
     }
-
-  /**
-   This method stops a running an AVCaptureSession.
-   */
-  func stopSession() {
-    self.removeObservers()
-    sessionQueue.async {
-      if self.session.isRunning {
-        self.session.stopRunning()
+    
+    /** This method stops a running an AVCaptureSession. */
+    func stopSession() {
+        self.removeObservers()
+        sessionQueue.async {
+            if self.session.isRunning {
+                self.session.stopRunning()
+                self.isSessionRunning = self.session.isRunning
+            }
+        }
+    }
+    
+    /** This method resumes an interrupted AVCaptureSession. */
+    func resumeInterruptedSession(withCompletion completion: @escaping (Bool) -> ()) {
+        sessionQueue.async {
+            self.startSession()
+            
+            DispatchQueue.main.async {
+                completion(self.isSessionRunning)
+            }
+        }
+    }
+    
+    /** This method starts the AVCaptureSession **/
+    private func startSession() {
+        self.session.startRunning()
         self.isSessionRunning = self.session.isRunning
-      }
     }
-
-  }
-
-  /**
-   This method resumes an interrupted AVCaptureSession.
-   */
-  func resumeInterruptedSession(withCompletion completion: @escaping (Bool) -> ()) {
-
-    sessionQueue.async {
-      self.startSession()
-
-      DispatchQueue.main.async {
-        completion(self.isSessionRunning)
-      }
+    
+    // MARK: - Session Configuration Methods.
+    /** This method requests for camera permissions and handles the configuration of the session and stores the result of configuration. */
+    private func attemptToConfigureSession() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            self.cameraConfiguration = .success
+        case .notDetermined:
+            self.sessionQueue.suspend()
+            self.requestCameraAccess(completion: { (granted) in
+                self.sessionQueue.resume()
+            })
+        case .denied:
+            self.cameraConfiguration = .permissionDenied
+        default:
+            break
+        }
+        
+        self.sessionQueue.async {
+            self.configureSession()
+        }
     }
-  }
-
-  /**
-   This method starts the AVCaptureSession
-   **/
-  private func startSession() {
-    self.session.startRunning()
-    self.isSessionRunning = self.session.isRunning
-  }
-
-  // MARK: - Session Configuration Methods.
-  /**
-   This method requests for camera permissions and handles the configuration of the session and stores the result of configuration.
-   */
-  private func attemptToConfigureSession() {
-    switch AVCaptureDevice.authorizationStatus(for: .video) {
-    case .authorized:
-      self.cameraConfiguration = .success
-    case .notDetermined:
-      self.sessionQueue.suspend()
-      self.requestCameraAccess(completion: { (granted) in
-        self.sessionQueue.resume()
-      })
-    case .denied:
-      self.cameraConfiguration = .permissionDenied
-    default:
-      break
+    
+    /** This method requests for camera permissions. */
+    private func requestCameraAccess(completion: @escaping (Bool) -> ()) {
+        AVCaptureDevice.requestAccess(for: .video) { (granted) in
+            if !granted {
+                self.cameraConfiguration = .permissionDenied
+            }
+            else {
+                self.cameraConfiguration = .success
+            }
+            completion(granted)
+        }
     }
-
-    self.sessionQueue.async {
-      self.configureSession()
-    }
-  }
-
-  /**
-   This method requests for camera permissions.
-   */
-  private func requestCameraAccess(completion: @escaping (Bool) -> ()) {
-    AVCaptureDevice.requestAccess(for: .video) { (granted) in
-      if !granted {
-        self.cameraConfiguration = .permissionDenied
-      }
-      else {
+    
+    /** This method handles all the steps to configure an AVCaptureSession. */
+    private func configureSession() {
+        
+        guard cameraConfiguration == .success else {
+            return
+        }
+        session.beginConfiguration()
+        
+        // Tries to add an AVCaptureDeviceInput.
+        guard addVideoDeviceInput() == true else {
+            self.session.commitConfiguration()
+            self.cameraConfiguration = .failed
+            return
+        }
+        
+        // Tries to add an AVCaptureVideoDataOutput.
+        guard addVideoDataOutput() else {
+            self.session.commitConfiguration()
+            self.cameraConfiguration = .failed
+            return
+        }
+        
+        session.commitConfiguration()
         self.cameraConfiguration = .success
-      }
-      completion(granted)
     }
-  }
-
-
-  /**
-   This method handles all the steps to configure an AVCaptureSession.
-   */
-  private func configureSession() {
-
-    guard cameraConfiguration == .success else {
-      return
-    }
-    session.beginConfiguration()
-
-    // Tries to add an AVCaptureDeviceInput.
-    guard addVideoDeviceInput() == true else {
-      self.session.commitConfiguration()
-      self.cameraConfiguration = .failed
-      return
-    }
-
-    // Tries to add an AVCaptureVideoDataOutput.
-    guard addVideoDataOutput() else {
-      self.session.commitConfiguration()
-      self.cameraConfiguration = .failed
-      return
-    }
-
-    session.commitConfiguration()
-    self.cameraConfiguration = .success
-  }
 
   /**
    This method tries to add an AVCaptureDeviceInput to the current AVCaptureSession.
